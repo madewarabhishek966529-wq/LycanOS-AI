@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/routes/route_names.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
 import '../../../../shared/widgets/glass_card.dart';
+import '../providers/auth_state_provider.dart';
 
-/// Login screen shell. The form and validation are wired up for real;
-/// the actual authenticate-against-backend call is implemented in Phase 2
-/// once the FastAPI auth endpoints and repository layer exist — for now
-/// submitting shows a not-yet-available message rather than pretending to
-/// sign in.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -30,15 +28,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Auth flow lands in Phase 2 — form validation is live.')),
-    );
+    final success = await ref.read(authStateProvider.notifier).login(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+        );
+    // On success, AppRouter's redirect (driven by authStateProvider)
+    // takes over navigation to the dashboard automatically — no explicit
+    // context.go() needed here.
+    if (!success && mounted) {
+      final error = ref.read(authStateProvider).errorMessage;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error ?? 'Login failed')));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isSubmitting = ref.watch(authStateProvider.select((s) => s.isSubmitting));
+
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -72,6 +80,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       hintText: 'you@business.com',
                       keyboardType: TextInputType.emailAddress,
                       prefixIcon: Icons.mail_outline,
+                      enabled: !isSubmitting,
                       validator: (value) {
                         if (value == null || value.isEmpty) return 'Email is required';
                         if (!value.contains('@')) return 'Enter a valid email';
@@ -85,6 +94,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       hintText: '••••••••',
                       obscureText: _obscure,
                       prefixIcon: Icons.lock_outline,
+                      enabled: !isSubmitting,
                       suffixIcon: IconButton(
                         icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, size: 20),
                         onPressed: () => setState(() => _obscure = !_obscure),
@@ -100,12 +110,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () {},
+                        onPressed: isSubmitting ? null : () => context.go(RouteNames.forgotPassword),
                         child: const Text('Forgot password?'),
                       ),
                     ),
                     const SizedBox(height: 16),
-                    AppButton(label: 'Sign In', onPressed: _handleSubmit),
+                    AppButton(label: 'Sign In', onPressed: _handleSubmit, isLoading: isSubmitting),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text("Don't have a business account?", style: Theme.of(context).textTheme.bodySmall),
+                        TextButton(
+                          onPressed: isSubmitting ? null : () => context.go(RouteNames.register),
+                          child: const Text('Register'),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),

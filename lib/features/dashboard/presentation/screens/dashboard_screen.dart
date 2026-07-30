@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../auth/presentation/providers/auth_state_provider.dart';
 
 /// Dashboard landing screen.
 ///
-/// Full feature implementation lands in its dedicated phase (see project
-/// README roadmap). This screen intentionally renders a real, styled empty
-/// state rather than a blank placeholder so the navigation shell is fully
-/// clickable and demoable after Phase 1.
-class DashboardScreen extends StatelessWidget {
+/// Full KPI/analytics implementation (today's sales, revenue graph, AI
+/// insights, etc.) lands in Phase 3. Phase 2 adds the real signed-in-user
+/// greeting on top of the Phase 1 empty state, since that data is now
+/// actually available from [authStateProvider].
+class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authStateProvider.select((s) => s.user));
+
     return Scaffold(
       appBar: AppBar(title: const Text('Dashboard')),
       body: Center(
@@ -19,10 +23,20 @@ class DashboardScreen extends StatelessWidget {
           children: [
             Icon(Icons.dashboard_rounded, size: 48, color: Theme.of(context).colorScheme.primary.withOpacity(0.5)),
             const SizedBox(height: 16),
-            Text('Dashboard', style: Theme.of(context).textTheme.headlineMedium),
+            Text(
+              user != null ? 'Welcome back, ${user.fullName.split(' ').first}' : 'Dashboard',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
+            if (user != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Signed in as ${user.role} · ${user.email}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
             const SizedBox(height: 8),
             Text(
-              'This module is built out in its dedicated phase.',
+              'Sales, revenue, and AI insights land in Phase 3.',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
           ],

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/providers/auth_state_provider.dart';
+import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
+import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/ai_assistant/presentation/screens/ai_assistant_screen.dart';
 import '../../features/customers/presentation/screens/customers_screen.dart';
@@ -19,8 +21,10 @@ import 'route_names.dart';
 /// (login/logout should immediately redirect) — this is the standard
 /// go_router + Riverpod refresh pattern.
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authNotifier = ref.watch(authStateProvider.notifier);
-
+  // Watched (not just read) so this provider — and therefore the GoRouter
+  // instance — rebuilds if the notifier itself is ever recreated (e.g. in
+  // tests that override authRepositoryProvider mid-session).
+  ref.watch(authStateProvider.notifier);
   return GoRouter(
     initialLocation: RouteNames.splash,
     refreshListenable: _AuthRefreshListenable(ref),
@@ -49,6 +53,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: RouteNames.splash, builder: (context, state) => const SplashScreen()),
       GoRoute(path: RouteNames.login, builder: (context, state) => const LoginScreen()),
+      GoRoute(path: RouteNames.register, builder: (context, state) => const RegisterScreen()),
+      GoRoute(path: RouteNames.forgotPassword, builder: (context, state) => const ForgotPasswordScreen()),
       ShellRoute(
         builder: (context, state, child) {
           return AppShell(currentPath: state.matchedLocation, child: child);
