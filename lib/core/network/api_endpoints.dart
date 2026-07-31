@@ -38,4 +38,5 @@ class ApiEndpoints {
   static const String aiInsights = '/ai/insights';
 
   static String withId(String base, String id) => '$base/$id';
+  static String adjustStock(String productId) => '$products/$productId/adjust-stock';
 }

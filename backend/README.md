@@ -72,10 +72,12 @@ isn't defined yet.
 
 ## What's deliberately not here yet
 
-- No auth endpoints (`/auth/login`, etc.) — Phase 2
-- No ORM models / Alembic migrations — first models land in Phase 4
-  (Inventory), Alembic is initialized at that point since there's nothing
-  to migrate before then
+- No POS/sales endpoints yet — stock only moves via the manual
+  `/inventory/products/{id}/adjust-stock` endpoint until Phase 4 adds
+  checkout-driven decrements
+- No Alembic migration has been run against a real Postgres in this
+  environment (no live DB reachable in this sandbox) — the migration file
+  is hand-written to match the model definitions; run `alembic upgrade head`
+  against your own Postgres instance to apply it
 - Ollama/LangChain/ChromaDB are commented out in `requirements.txt` —
-  installed when Phase 9 (AI Assistant) actually uses them, to keep Phase 1
-  `pip install` fast and dependency conflicts minimal
+  installed when Phase 9 (AI Assistant) actually uses them
