@@ -20,6 +20,7 @@ class PaymentSplitInput(BaseModel):
 
 class CheckoutRequest(BaseModel):
     items: list[CheckoutLineItem] = Field(min_length=1)
+    customer_id: uuid.UUID | None = None
     invoice_discount_amount: Decimal = Field(default=Decimal("0"), ge=0)
     coupon_code: str | None = None
     payment_method: PaymentMethod | None = None
@@ -59,6 +60,7 @@ class InvoiceResponse(BaseModel):
 
     id: uuid.UUID
     invoice_number: str
+    customer_id: uuid.UUID | None
     subtotal: Decimal
     discount_amount: Decimal
     gst_amount: Decimal

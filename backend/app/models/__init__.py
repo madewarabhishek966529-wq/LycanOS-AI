@@ -7,6 +7,7 @@ once its module has been imported somewhere.
 from app.models.business import Business
 from app.models.category import Category
 from app.models.coupon import Coupon
+from app.models.customer import Customer
 from app.models.invoice import Invoice, InvoiceLineItem, PaymentSplit
 from app.models.product import Product
 from app.models.supplier import Supplier
@@ -22,4 +23,5 @@ __all__ = [
     "InvoiceLineItem",
     "PaymentSplit",
     "Coupon",
+    "Customer",
 ]

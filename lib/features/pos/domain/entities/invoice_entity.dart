@@ -36,6 +36,7 @@ class InvoiceEntity extends Equatable {
   const InvoiceEntity({
     required this.id,
     required this.invoiceNumber,
+    this.customerId,
     required this.subtotal,
     required this.discountAmount,
     required this.gstAmount,
@@ -50,6 +51,7 @@ class InvoiceEntity extends Equatable {
 
   final String id;
   final String invoiceNumber;
+  final String? customerId;
   final double subtotal;
   final double discountAmount;
   final double gstAmount;

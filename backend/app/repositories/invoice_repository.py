@@ -39,6 +39,7 @@ class InvoiceRepository:
         business_id: uuid.UUID,
         cashier_id: uuid.UUID,
         invoice_number: str,
+        customer_id: uuid.UUID | None = None,
         subtotal,
         discount_amount,
         gst_amount,
@@ -52,6 +53,7 @@ class InvoiceRepository:
             business_id=business_id,
             cashier_id=cashier_id,
             invoice_number=invoice_number,
+            customer_id=customer_id,
             subtotal=subtotal,
             discount_amount=discount_amount,
             gst_amount=gst_amount,
@@ -84,6 +86,15 @@ class InvoiceRepository:
             .order_by(Invoice.created_at.desc())
             .limit(limit)
             .offset(offset)
+        )
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
+    async def list_for_customer(self, business_id: uuid.UUID, customer_id: uuid.UUID) -> list[Invoice]:
+        query = (
+            self._with_relations()
+            .where(Invoice.business_id == business_id, Invoice.customer_id == customer_id)
+            .order_by(Invoice.created_at.desc())
         )
         result = await self.db.execute(query)
         return list(result.scalars().all())

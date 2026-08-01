@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../shared/widgets/app_button.dart';
 import '../../../../shared/widgets/app_text_field.dart';
+import '../../../customers/domain/entities/customer_entity.dart';
+import '../../../customers/presentation/providers/customer_providers.dart';
 import '../providers/cart_provider.dart';
 import '../providers/pos_providers.dart';
 import 'receipt_screen.dart';
@@ -30,6 +32,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
   };
 
   bool _isSubmitting = false;
+  CustomerEntity? _selectedCustomer;
 
   @override
   void dispose() {
@@ -66,6 +69,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
 
     final result = await ref.read(posRepositoryProvider).checkout(
           items: cart.items,
+          customerId: _selectedCustomer?.id,
           invoiceDiscountAmount: double.tryParse(_invoiceDiscountController.text) ?? 0,
           couponCode: _couponController.text.trim().isEmpty ? null : _couponController.text.trim(),
           paymentMethod: singleMethod,
@@ -88,6 +92,79 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
     }
   }
 
+  Future<void> _pickCustomer() async {
+    final searchController = TextEditingController();
+    var results = <CustomerEntity>[];
+    var isLoading = false;
+
+    Future<void> search(StateSetter setSheetState) async {
+      setSheetState(() => isLoading = true);
+      final result = await ref.read(customerRepositoryProvider).getCustomers(search: searchController.text);
+      isLoading = false;
+      if (result is Success<List<CustomerEntity>>) {
+        setSheetState(() => results = result.data);
+      } else {
+        setSheetState(() => results = []);
+      }
+    }
+
+    final selected = await showModalBottomSheet<CustomerEntity>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            if (results.isEmpty && !isLoading && searchController.text.isEmpty) {
+              search(setSheetState);
+            }
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: SizedBox(
+                height: 400,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('Attach a customer', style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: searchController,
+                      autofocus: true,
+                      decoration: const InputDecoration(hintText: 'Search by name or phone', prefixIcon: Icon(Icons.search)),
+                      onChanged: (_) => search(setSheetState),
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : ListView.builder(
+                              itemCount: results.length,
+                              itemBuilder: (context, index) {
+                                final customer = results[index];
+                                return ListTile(
+                                  title: Text(customer.name),
+                                  subtitle: Text(customer.phone ?? customer.email ?? ''),
+                                  onTap: () => Navigator.of(context).pop(customer),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (selected != null) setState(() => _selectedCustomer = selected);
+  }
+
   @override
   Widget build(BuildContext context) {
     final cart = ref.watch(cartProvider);
@@ -99,6 +176,27 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          Text('Customer (optional)', style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          if (_selectedCustomer == null)
+            OutlinedButton.icon(
+              onPressed: _isSubmitting ? null : _pickCustomer,
+              icon: const Icon(Icons.person_add_alt_1_outlined),
+              label: const Text('Attach a customer'),
+            )
+          else
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.person),
+                title: Text(_selectedCustomer!.name),
+                subtitle: Text(_selectedCustomer!.phone ?? _selectedCustomer!.email ?? ''),
+                trailing: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: _isSubmitting ? null : () => setState(() => _selectedCustomer = null),
+                ),
+              ),
+            ),
+          const SizedBox(height: 20),
           Text('Order summary', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           _summaryRow('Subtotal', cart.subtotal),
@@ -165,6 +263,13 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                   ),
               ],
             ),
+          if (_mode == _PaymentMode.single && _singleMethod == 'credit' && _selectedCustomer == null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Credit sales need a customer attached above.',
+              style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12),
+            ),
+          ],
           const SizedBox(height: 24),
           _summaryRow('Estimated total', estimatedTotal, emphasize: true),
           const SizedBox(height: 4),

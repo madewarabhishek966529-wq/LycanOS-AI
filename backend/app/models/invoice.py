@@ -38,6 +38,12 @@ class Invoice(Base):
     cashier_id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
     )
+    # Nullable — most POS sales are walk-in/anonymous. Only set when a
+    # cashier explicitly attaches a customer at checkout (Phase 6), which
+    # is also what makes loyalty points and credit-balance sales possible.
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("customers.id"), nullable=True, index=True
+    )
 
     invoice_number: Mapped[str] = mapped_column(String(30), nullable=False, index=True)
 

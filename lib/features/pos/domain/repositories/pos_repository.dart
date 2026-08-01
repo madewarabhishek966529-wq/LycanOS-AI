@@ -5,6 +5,7 @@ import '../entities/invoice_entity.dart';
 abstract class PosRepository {
   Future<Result<InvoiceEntity>> checkout({
     required List<CartItemEntity> items,
+    String? customerId,
     double invoiceDiscountAmount = 0,
     String? couponCode,
     String? paymentMethod,

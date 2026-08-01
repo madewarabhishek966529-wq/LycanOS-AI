@@ -12,6 +12,7 @@ class PosRepositoryImpl implements PosRepository {
   @override
   Future<Result<InvoiceEntity>> checkout({
     required List<CartItemEntity> items,
+    String? customerId,
     double invoiceDiscountAmount = 0,
     String? couponCode,
     String? paymentMethod,
@@ -26,6 +27,7 @@ class PosRepositoryImpl implements PosRepository {
                   'line_discount_amount': item.lineDiscountAmount,
                 })
             .toList(),
+        if (customerId != null) 'customer_id': customerId,
         if (invoiceDiscountAmount > 0) 'invoice_discount_amount': invoiceDiscountAmount,
         if (couponCode != null && couponCode.isNotEmpty) 'coupon_code': couponCode,
         if (paymentMethod != null) 'payment_method': paymentMethod,

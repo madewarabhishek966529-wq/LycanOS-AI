@@ -39,6 +39,7 @@ class InvoiceModel extends InvoiceEntity {
   const InvoiceModel({
     required super.id,
     required super.invoiceNumber,
+    super.customerId,
     required super.subtotal,
     required super.discountAmount,
     required super.gstAmount,
@@ -55,6 +56,7 @@ class InvoiceModel extends InvoiceEntity {
     return InvoiceModel(
       id: json['id'] as String,
       invoiceNumber: json['invoice_number'] as String,
+      customerId: json['customer_id'] as String?,
       subtotal: double.parse(json['subtotal'].toString()),
       discountAmount: double.parse(json['discount_amount'].toString()),
       gstAmount: double.parse(json['gst_amount'].toString()),

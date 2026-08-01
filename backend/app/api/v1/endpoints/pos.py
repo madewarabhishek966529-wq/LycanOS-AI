@@ -8,6 +8,7 @@ from app.api.deps import CurrentUser, require_role
 from app.core.security import UserRole
 from app.db.database import get_db
 from app.repositories.coupon_repository import CouponRepository
+from app.repositories.customer_repository import CustomerRepository
 from app.repositories.inventory_repository import ProductRepository
 from app.repositories.invoice_repository import InvoiceRepository
 from app.schemas.coupon import CouponCreate, CouponResponse
@@ -23,7 +24,7 @@ CanManageCoupons = Depends(require_role(UserRole.OWNER, UserRole.MANAGER))
 
 
 def get_pos_service(db: AsyncSession = Depends(get_db)) -> PosService:
-    return PosService(db, ProductRepository(db), InvoiceRepository(db), CouponRepository(db))
+    return PosService(db, ProductRepository(db), InvoiceRepository(db), CouponRepository(db), CustomerRepository(db))
 
 
 def get_coupon_repository(db: AsyncSession = Depends(get_db)) -> CouponRepository:

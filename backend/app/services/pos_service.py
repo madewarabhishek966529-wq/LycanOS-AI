@@ -15,12 +15,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.business import Business
 from app.models.coupon import DiscountType
-from app.models.invoice import Invoice
+from app.models.invoice import Invoice, PaymentMethod
 from app.models.product import Product
 from app.repositories.coupon_repository import CouponRepository
+from app.repositories.customer_repository import CustomerRepository
 from app.repositories.inventory_repository import ProductRepository
 from app.repositories.invoice_repository import InvoiceRepository
 from app.schemas.pos import CheckoutRequest
+from app.services.customer_service import LOYALTY_POINTS_PER_RUPEE_SPENT
 from app.services.receipt_service import generate_receipt_pdf
 
 TWO_PLACES = Decimal("0.01")
@@ -44,11 +46,13 @@ class PosService:
         product_repo: ProductRepository,
         invoice_repo: InvoiceRepository,
         coupon_repo: CouponRepository,
+        customer_repo: CustomerRepository,
     ):
         self.db = db
         self.product_repo = product_repo
         self.invoice_repo = invoice_repo
         self.coupon_repo = coupon_repo
+        self.customer_repo = customer_repo
 
     async def checkout(
         self, *, business_id: uuid.UUID, cashier_id: uuid.UUID, request: CheckoutRequest
@@ -57,6 +61,12 @@ class PosService:
             raise PosError("Provide either payment_method or payment_splits")
         if request.payment_method is not None and request.payment_splits:
             raise PosError("Provide payment_method OR payment_splits, not both")
+
+        customer = None
+        if request.customer_id is not None:
+            customer = await self.customer_repo.get_by_id(business_id, request.customer_id)
+            if customer is None:
+                raise PosError("Customer not found", status_code=404)
 
         # --- 1. Load and validate every product up front, before mutating
         # anything — a mid-loop failure must never leave some products
@@ -156,9 +166,33 @@ class PosService:
         else:
             primary_method = request.payment_method
 
+        # Any payment method of "credit" needs a customer to actually owe
+        # the money to — selling "on credit" to an anonymous walk-in sale
+        # is a contradiction in terms.
+        if payment_splits_payload:
+            credit_amount = sum((s["amount"] for s in payment_splits_payload if s["method"] == PaymentMethod.CREDIT), Decimal("0"))
+        elif primary_method == PaymentMethod.CREDIT:
+            credit_amount = total_amount
+        else:
+            credit_amount = Decimal("0")
+
+        if credit_amount > 0 and customer is None:
+            raise PosError("A customer must be attached to record a credit sale")
+
+        loyalty_points_earned = int(total_amount // LOYALTY_POINTS_PER_RUPEE_SPENT) if customer is not None else 0
+
         # --- 4. Decrement stock (in-session mutation, not yet committed). ---
         for item in request.items:
             products[item.product_id].quantity_in_stock -= item.quantity
+
+        # --- 4b. Apply customer effects (loyalty points, credit balance) —
+        # same in-session-mutate-then-commit-once pattern as stock, so a
+        # sale, its stock decrement, and its effect on the customer's
+        # account are one atomic unit. ---
+        if customer is not None:
+            customer.loyalty_points += loyalty_points_earned
+            if credit_amount > 0:
+                customer.credit_balance += credit_amount
 
         # --- 5. Create the invoice (flush, not commit) and commit
         # everything together. ---
@@ -167,6 +201,7 @@ class PosService:
             business_id=business_id,
             cashier_id=cashier_id,
             invoice_number=invoice_number,
+            customer_id=request.customer_id,
             subtotal=_round(subtotal),
             discount_amount=_round(total_discount),
             gst_amount=_round(gst_total),
