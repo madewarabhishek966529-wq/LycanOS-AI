@@ -87,3 +87,5 @@ unauthenticated session correctly redirects to `/login`.
   no feature logic lives there until its phase
 - Drift (SQLite) isn't initialized yet — added in Phase 4 (Inventory) once
   there's an actual schema to define
+
+  
